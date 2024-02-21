@@ -25,6 +25,10 @@ let d: z.input<typeof SimpleDeployment> = {
                 requests: { cpu: "100m", memory: "100Mi" },
                 limits: { cpu: "200m", memory: "200Mi" },
             },
+            envs: [
+                { name: "test", value: "test" },
+                { name: "test", secret: { secretName: "test", key: "test" } },
+            ]
         },
     ],
     initContainers: [

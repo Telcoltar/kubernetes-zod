@@ -1,8 +1,7 @@
 import { z } from "zod";
 import { Container } from "./container";
-import { Deployment } from "./deployment";
 import type { PodSpec } from "./podspec";
-import type { VolumeMount } from "./volumeMount";
+import { VolumeMount } from "./volumeMount";
 import { ConfigMap, SimpleConfigMap } from "./configmap";
 import type { Volume } from "./volumes";
 
@@ -52,8 +51,8 @@ const configMapVolume = z.object({
 export const SimpleDeployment = z.object({
     name: z.string().min(1),
     replicas: z.number().int().positive().optional(),
-    containers: Container.array(),
-    initContainers: Container.array().optional(),
+    containers: Container.omit({volumeMounts: true}).array(),
+    initContainers: Container.omit({volumeMounts: true}).array().optional(),
     emptyDirVolumes: emptyDirVolume.array().optional(),
     configMapVolumes: configMapVolume.array().optional(),
 }).transform(deployment => {
@@ -105,12 +104,14 @@ export const SimpleDeployment = z.object({
             container.volumeMounts.push(mount.mount);
         }
     });
-    let podSpec: z.input<typeof PodSpec> = {
+    let podSpec: z.infer<typeof PodSpec> = {
         containers: deployment.containers,
         initContainers: deployment.initContainers,
         volumes: deployment.volumes,
     };
-    let deploymentInput: z.input<typeof Deployment> = {
+    let deploymentInput = {
+        apiVersion: "apps/v1",
+        kind: "Deployment",
         metadata: { name: deployment.name, labels: {app: deployment.name} },
         spec: {
             replicas: deployment.replicas,
@@ -121,5 +122,5 @@ export const SimpleDeployment = z.object({
             },
         },
     };
-    return Deployment.parse(deploymentInput);
+    return deploymentInput;
 })

@@ -1,42 +1,86 @@
-import { V1Deployment } from "@kubernetes/client-node";
-import { BaseModul } from "./Implementations/BaseModul";
-import { compileRecordToArray } from "./models/compilable";
-import { Deployment } from "./models/kubernetes_models/deployment";
+import type { z } from "zod";
+import { SimpleDeployment } from "./models/kubernetes_base_models/simpleDeployment";
 import * as fs from "fs";
-import * as yaml from "js-yaml"
-import { zodToJsonSchema } from "zod-to-json-schema";
-import { WorkloadConfig } from "./models/workload";
-import { ExEnv } from "./Implementations/ExEnv";
-import { z } from "zod";
+import YAML from 'yaml'
+import { Workload } from "./models/kubernetes_base_models/workload";
+import type { SimpleConfigMap } from "./models/kubernetes_base_models/configmap";
 
-let HelloWorldEnv = ExEnv({
-    name: "hello-world",
-    featToggle1: true,
-    featToggle2: false,
-    featToggle3: true,
-})
 
-let HelloWorldCompiled = HelloWorldEnv.compile();
+let c: z.input<typeof SimpleConfigMap> = {
+    name: "testConfigmap",
+    data: {
+        "test": "test",
+    },
+};
 
-Object.entries(HelloWorldCompiled).forEach(([key, value]) => {
-    value.map((item) => {
-        fs.writeFileSync(`./output/${key}_${item.metadata.name}.yaml`, yaml.dump(item))
+let d: z.input<typeof SimpleDeployment> = {
+    name: "test",
+    replicas: 2,
+    containers: [
+        {
+            name: "test",
+            image: "test",
+            ports: [{ containerPort: 80 }],
+            resources: {
+                requests: { cpu: "100m", memory: "100Mi" },
+                limits: { cpu: "200m", memory: "200Mi" },
+            },
+        },
+    ],
+    initContainers: [
+        {
+            name: "testinit",
+            image: "testinit",
+            resources: {
+                requests: { cpu: "100m", memory: "100Mi" },
+                limits: { cpu: "200m", memory: "200Mi" },
+            },
+        },
+    ],
+    emptyDirVolumes: [
+        {
+            name: "test",
+            mounts: [
+                {
+                    containerName: "test",
+                    mountPath: "/test",
+                    readOnly: true,
+                },
+                {
+                    containerName: "testinit",
+                    mountPath: "/testinit",
+                    readOnly: true,
+                }
+            ],
+        },
+    ],
+    configMapVolumes: [
+        {
+            configMap: c,
+            mounts: [
+                {
+                    containerName: "test",
+                    mountPath: "/test",
+                    readOnly: true,
+                },
+                {
+                    containerName: "testinit",
+                    mountPath: "/testinit",
+                    readOnly: true,
+                }
+            ],
+        },
+    ],
+};
+
+let w: z.input<typeof Workload> = {
+    deployment: [d],
+    configMaps: [c],
+};
+
+let parsed = Workload.parse(w);
+Object.entries(parsed).forEach(([kind, value]) => {
+    value.forEach(runtimeObj => {
+        fs.writeFileSync(`./output/${runtimeObj.metadata.name}_${kind}.yaml`, YAML.stringify(runtimeObj));
     })
 })
-
-let test = z.object({
-    name: z.string(),
-    volumes: z.union([
-        z.object({
-            emptyDir: z.object({})
-        }).strict(),
-        z.object({
-            secret: z.object({
-                secretName: z.string()
-            })
-        }).strict()
-    ])
-})
-
-let testSchema = zodToJsonSchema(test)
-fs.writeFileSync("./output/test.json", JSON.stringify(testSchema, null, 2))

@@ -1,5 +1,5 @@
 {
-  "name": "deployment",
+  "name": "kubernetes-zod",
   "module": "index.ts",
   "type": "module",
   "devDependencies": {
@@ -9,9 +9,7 @@
     "typescript": "^5.0.0"
   },
   "dependencies": {
-    "@kubernetes/client-node": "^0.20.0",
-    "js-yaml": "^4.1.0",
-    "zod": "^3.22.4",
-    "zod-to-json-schema": "^3.22.4"
+    "yaml": "^2.3.4",
+    "zod": "^3.22.4"
   }
 }
